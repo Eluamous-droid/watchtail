@@ -1,6 +1,3 @@
-/*
-Copyright © 2024 NAME HERE <EMAIL ADDRESS>
-*/
 package cmd
 
 import (
@@ -17,7 +14,9 @@ var rootCmd = &cobra.Command{
 	// Uncomment the following line if your bare application
 	// has an action associated with it:
 	Run: func(cmd *cobra.Command, args []string) { 
-		printFile(args[0])
+		queue, counter := tailExistingFiles(args[0], 10)
+		defer killAllTails(queue, counter)
+
 	},
 
 }
@@ -43,22 +42,50 @@ func init() {
 	rootCmd.Flags().BoolP("toggle", "t", false, "Help message for toggle")
 }
 
-func printFile(path string) {
+func killAllTails(queue chan *os.Process, counter int){
 
-	println("in printFile"  + path)
+	for i:= 0; i < counter; i++{
+		p := <- queue
+		p.Kill()
+		
+	}
+
+}
+
+func tailExistingFiles(path string, maxLength int) (tails chan *os.Process, tailCount int){
+	files, err := os.ReadDir(path)
+	queue := make(chan *os.Process, maxLength)
+	counter := 0
+	if err != nil {
+		panic(err)
+	}
+
+	for _, file := range files{
+		if !file.IsDir() {
+			queue <- tailFile(path + "/" + file.Name())
+			counter++
+		}
+
+		if counter >= maxLength{
+			oldest := <- queue
+			oldest.Kill()
+			counter--
+		}
+	}
+	
+	return queue, counter
+}
+
+func tailFile(filePath string) *os.Process {
+
 	app := "tail"
-	args := "-f "+ path + "/*"
+	args := "-f" 
 
-	cmd := exec.Command(app, args)
+	cmd := exec.Command(app, args, filePath)
 	cmd.Stdout = os.Stdout
 	cmd.Stderr = os.Stderr
-	//stdout, err := cmd.StdoutPipe()
-	//if err != nil {
-	// panic(err)
-	//}
-
-	cmd.Run()
-
+	cmd.Start()
+	return cmd.Process
 }
 
 
