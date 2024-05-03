@@ -1,9 +1,13 @@
 package cmd
 
 import (
+	"fmt"
+	"io/fs"
 	"os"
 	"os/exec"
+	"sort"
 
+	"github.com/fsnotify/fsnotify"
 	"github.com/spf13/cobra"
 )
 
@@ -15,7 +19,8 @@ var rootCmd = &cobra.Command{
 	// has an action associated with it:
 	Run: func(cmd *cobra.Command, args []string) { 
 		queue, counter := tailExistingFiles(args[0], 10)
-		defer killAllTails(queue, counter)
+		defer killAllTails(queue)
+		monitorDirectory(args[0], queue, counter, 10)
 
 	},
 
@@ -42,16 +47,59 @@ func init() {
 	rootCmd.Flags().BoolP("toggle", "t", false, "Help message for toggle")
 }
 
-func killAllTails(queue chan *os.Process, counter int){
+func monitorDirectory(path string, queue chan *os.Process, counter int, maxTails int){
 
-	for i:= 0; i < counter; i++{
-		p := <- queue
+	watcher, err := fsnotify.NewWatcher()
+	if err != nil {
+		panic(err)
+	}
+	defer watcher.Close()
+	err = watcher.Add(path)
+	if err != nil {
+		panic(err)
+	}
+	// We should never leave this function unless the program ends
+	for {
+		select{
+		case err, ok := <-watcher.Errors:
+			if !ok { // Channel was closed (i.e. Watcher.Close() was called).
+				return
+			}
+			println("ERROR: %s", err)
+
+		case event,ok := <-watcher.Events:
+			if !ok{
+				println("event was not ok") 
+				return
+			}
+
+			if event.Has(fsnotify.Create){
+				if counter == maxTails{
+					process := <- queue
+					process.Kill()
+					counter--
+				}
+				queue <- tailFile(event.Name)
+				counter++
+			}
+		}	
+	}
+}
+
+func killAllTails(queue chan *os.Process){
+
+	for p := range queue{
 		p.Kill()
 		
 	}
 
 }
-
+func printFiles(files []fs.DirEntry) {
+	for _, file := range files {
+		fileInfo, _:= file.Info()
+		fmt.Println(file.Name(), fileInfo.ModTime())
+	}
+}
 func tailExistingFiles(path string, maxLength int) (tails chan *os.Process, tailCount int){
 	files, err := os.ReadDir(path)
 	queue := make(chan *os.Process, maxLength)
@@ -59,18 +107,15 @@ func tailExistingFiles(path string, maxLength int) (tails chan *os.Process, tail
 	if err != nil {
 		panic(err)
 	}
+	files = sortFilesByModTime(files)
+	filesSlice := files[:maxLength]
 
-	for _, file := range files{
+	for _, file := range filesSlice{
 		if !file.IsDir() {
 			queue <- tailFile(path + "/" + file.Name())
 			counter++
 		}
 
-		if counter >= maxLength{
-			oldest := <- queue
-			oldest.Kill()
-			counter--
-		}
 	}
 	
 	return queue, counter
@@ -88,4 +133,19 @@ func tailFile(filePath string) *os.Process {
 	return cmd.Process
 }
 
+func sortFilesByModTime(files []os.DirEntry) []os.DirEntry{
+	sort.Slice(files, func(i,j int) bool{
+		fileI, err := files[i].Info()
+		if err != nil {
+			panic(err)
+		}
+		fileJ, err := files[j].Info()
+		if err != nil {
+			panic(err)
+		}
+		return fileI.ModTime().After(fileJ.ModTime())
+
+	})
+	return files
+}
 
