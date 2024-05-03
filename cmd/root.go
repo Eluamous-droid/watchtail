@@ -108,7 +108,9 @@ func tailExistingFiles(path string, maxLength int) (tails chan *os.Process, tail
 		panic(err)
 	}
 	files = sortFilesByModTime(files)
-	filesSlice := files[:maxLength]
+
+	sliceSize := getSmallestInt(len(files), maxLength)
+	filesSlice := files[:sliceSize]
 
 	for _, file := range filesSlice{
 		if !file.IsDir() {
@@ -119,6 +121,11 @@ func tailExistingFiles(path string, maxLength int) (tails chan *os.Process, tail
 	}
 	
 	return queue, counter
+}
+func getSmallestInt(a int, b int) int {
+	if a > b{ return b}
+	return a
+
 }
 
 func tailFile(filePath string) *os.Process {
