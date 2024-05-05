@@ -10,11 +10,11 @@ import (
 	"github.com/fsnotify/fsnotify"
 )
 
-func MonitorDir(path string, maxMonitors int){
+func MonitorDir(path string, maxTails int){
 
-		queue, counter := tailExistingFiles(path, maxMonitors)
+		queue, counter := tailExistingFiles(path, maxTails)
 		defer killAllTails(queue)
-		monitorDirectory(path, queue, counter, maxMonitors)
+		monitorDirectory(path, queue, counter, maxTails)
 
 }
 
@@ -78,6 +78,7 @@ func tailExistingFiles(path string, maxLength int) (tails chan *os.Process, tail
 	if err != nil {
 		panic(err)
 	}
+	files = removeDirs(files)
 	files = sortFilesByModTime(files)
 
 	sliceSize := getSmallestInt(len(files), maxLength)
@@ -126,4 +127,13 @@ func sortFilesByModTime(files []os.DirEntry) []os.DirEntry{
 	})
 	return files
 }
+func removeDirs(s []os.DirEntry) []os.DirEntry{
+	var dirless []os.DirEntry
+	for _,file := range s{
+		if !file.IsDir() {
+			dirless = append(dirless, file)
+		}
+	}
 
+	return dirless
+}

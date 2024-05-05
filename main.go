@@ -11,6 +11,11 @@ import (
 
 func main() {
 
-	maxTails := flag.Int("Max tails", 10, "Max tails running at once")
-	cmd.MonitorDir(os.Args[1],*maxTails)
+	maxTails := flag.Int("m", 10, "Max tails running at once")
+	flag.Parse()
+	if len(flag.Args()) < 1 {
+		println("Must provide path to monitor")
+		os.Exit(1)
+	}
+	cmd.MonitorDir(flag.Arg(0), *maxTails)
 }
