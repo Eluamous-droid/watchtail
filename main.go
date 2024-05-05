@@ -1,11 +1,16 @@
 /*
 Copyright © 2024 NAME HERE <EMAIL ADDRESS>
-
 */
 package main
 
-import "retailer/cmd"
+import (
+	"flag"
+	"os"
+	"retailer/cmd"
+)
 
 func main() {
-	cmd.Execute()
+
+	maxTails := flag.Int("Max tails", 10, "Max tails running at once")
+	cmd.MonitorDir(os.Args[1],*maxTails)
 }
