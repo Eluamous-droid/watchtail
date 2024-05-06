@@ -16,7 +16,7 @@ func MonitorDir(path string, maxTails int){
 
 }
 
-func monitorDirectory(path string, queue chan *os.Process, counter int, maxTails int){
+func monitorDirectory(path string, tails chan *os.Process, counter int, maxTails int){
 
 	watcher, err := fsnotify.NewWatcher()
 	if err != nil {
@@ -43,28 +43,33 @@ func monitorDirectory(path string, queue chan *os.Process, counter int, maxTails
 			}
 
 			if event.Has(fsnotify.Create){
-				f,err := os.Open(event.Name)
-				defer f.Close()
-				if err != nil {
-					panic(err)
-				}
-				fi,_ := f.Stat()
-
-				if fi.IsDir(){
-				continue	
-				}
-				if counter == maxTails{
-					process := <- queue
-					process.Kill()
-					counter--
-				}
-				queue <- tailFile(event.Name)
-				counter++
+				counter = newFileCreated(event, counter, maxTails, tails)
 			}
 		}	
 	}
 }
+func newFileCreated(event fsnotify.Event, counter int, maxTails int, tails chan *os.Process) int{
 
+	f,err := os.Open(event.Name)
+	defer f.Close()
+	if err != nil {
+		println("Newly created file doesnt exist anymore")
+		return counter
+	}
+	fi,_ := f.Stat()
+
+	if fi.IsDir(){
+		return counter
+	}
+	if counter == maxTails{
+		process := <- tails
+		process.Kill()
+		counter--
+	}
+	tails <- tailFile(event.Name)
+	counter++
+	return counter
+}
 func tailExistingFiles(path string, maxLength int) (tails chan *os.Process, tailCount int){
 	files, err := os.ReadDir(path)
 	queue := make(chan *os.Process, maxLength)
@@ -83,9 +88,8 @@ func tailExistingFiles(path string, maxLength int) (tails chan *os.Process, tail
 			queue <- tailFile(path + "/" + file.Name())
 			counter++
 		}
-
 	}
-	
+
 	return queue, counter
 }
 
@@ -130,12 +134,10 @@ func removeDirs(s []os.DirEntry) []os.DirEntry{
 			dirless = append(dirless, file)
 		}
 	}
-
 	return dirless
 }
 
 func getSmallestInt(a int, b int) int {
 	if a > b{ return b}
 	return a
-
 }
