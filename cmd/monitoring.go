@@ -1,8 +1,6 @@
 package cmd
 
 import (
-	"fmt"
-	"io/fs"
 	"os"
 	"os/exec"
 	"sort"
@@ -57,20 +55,6 @@ func monitorDirectory(path string, queue chan *os.Process, counter int, maxTails
 	}
 }
 
-func killAllTails(queue chan *os.Process){
-
-	for p := range queue{
-		p.Kill()
-		
-	}
-
-}
-func printFiles(files []fs.DirEntry) {
-	for _, file := range files {
-		fileInfo, _:= file.Info()
-		fmt.Println(file.Name(), fileInfo.ModTime())
-	}
-}
 func tailExistingFiles(path string, maxLength int) (tails chan *os.Process, tailCount int){
 	files, err := os.ReadDir(path)
 	queue := make(chan *os.Process, maxLength)
@@ -94,23 +78,6 @@ func tailExistingFiles(path string, maxLength int) (tails chan *os.Process, tail
 	
 	return queue, counter
 }
-func getSmallestInt(a int, b int) int {
-	if a > b{ return b}
-	return a
-
-}
-
-func tailFile(filePath string) *os.Process {
-
-	app := "tail"
-	args := "-f" 
-
-	cmd := exec.Command(app, args, filePath)
-	cmd.Stdout = os.Stdout
-	cmd.Stderr = os.Stderr
-	cmd.Start()
-	return cmd.Process
-}
 
 func sortFilesByModTime(files []os.DirEntry) []os.DirEntry{
 	sort.Slice(files, func(i,j int) bool{
@@ -127,6 +94,25 @@ func sortFilesByModTime(files []os.DirEntry) []os.DirEntry{
 	})
 	return files
 }
+
+func tailFile(filePath string) *os.Process {
+
+	app := "tail"
+	args := "-f" 
+
+	cmd := exec.Command(app, args, filePath)
+	cmd.Stdout = os.Stdout
+	cmd.Stderr = os.Stderr
+	cmd.Start()
+	return cmd.Process
+}
+func killAllTails(queue chan *os.Process){
+
+	for p := range queue{
+		p.Kill()
+	}
+}
+
 func removeDirs(s []os.DirEntry) []os.DirEntry{
 	var dirless []os.DirEntry
 	for _,file := range s{
@@ -136,4 +122,10 @@ func removeDirs(s []os.DirEntry) []os.DirEntry{
 	}
 
 	return dirless
+}
+
+func getSmallestInt(a int, b int) int {
+	if a > b{ return b}
+	return a
+
 }
