@@ -43,6 +43,16 @@ func monitorDirectory(path string, queue chan *os.Process, counter int, maxTails
 			}
 
 			if event.Has(fsnotify.Create){
+				f,err := os.Open(event.Name)
+				defer f.Close()
+				if err != nil {
+					panic(err)
+				}
+				fi,_ := f.Stat()
+
+				if fi.IsDir(){
+				continue	
+				}
 				if counter == maxTails{
 					process := <- queue
 					process.Kill()
