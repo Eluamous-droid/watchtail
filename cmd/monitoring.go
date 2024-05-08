@@ -14,7 +14,7 @@ func MonitorDir(path string, maxTails int){
 
 	queue := make(chan *os.Process, maxTails)
 	counter := 0
-	filesForMonitoring := getNewestFiles(files, maxTails)
+	filesForMonitoring := getNewestExistingFiles(files, maxTails)
 
 	for i := len(filesForMonitoring)-1; i >= 0; i-- {
 		if !filesForMonitoring[i].IsDir() {
@@ -62,6 +62,7 @@ func monitorDirectory(path string, tails chan *os.Process, counter int, maxTails
 		}	
 	}
 }
+
 func newFileCreated(event fsnotify.Event, counter int, maxTails int, tails chan *os.Process) int{
 
 	f,err := os.Open(event.Name)
@@ -84,7 +85,8 @@ func newFileCreated(event fsnotify.Event, counter int, maxTails int, tails chan 
 	counter++
 	return counter
 }
-func getNewestFiles(files []os.DirEntry, maxLength int) []os.DirEntry{
+
+func getNewestExistingFiles(files []os.DirEntry, maxLength int) []os.DirEntry{
 	files = removeDirs(files)
 	files = sortFilesByModTime(files)
 
