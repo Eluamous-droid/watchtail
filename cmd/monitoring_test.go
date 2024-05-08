@@ -8,14 +8,17 @@ import (
 
 const dirName ="testDir"
 
-func TestDirEntriesSortedByModDate(t *testing.T){
+func TestDirEntriesSortedByModDateNewestFirst(t *testing.T){
 
-	originalFiles := []os.FileInfo{createFile("test1", false,0), createFile("test5", false,1), createFile("test2", false,0), createFile("test11", false,0)}
+	originalFiles := []os.DirEntry{createFile("test1", false,2), createFile("test2", false,1), createFile("test3", false,5), createFile("test41", false,10)}
 
+	newFiles := make ([]os.DirEntry, len(originalFiles))
+	copy(newFiles,originalFiles)
 
-	newfiles = sortFilesByModTime(originalFiles)
+	sortFilesByModTime(newFiles)
 
-	if originalFiles[1].Name() != newFiles[1].Name(){
+	if originalFiles[1].Name() != newFiles[0].Name(){
+		println(originalFiles[1].Name() + " " + newFiles[0].Name())
 		t.Fail()
 	}
 }
@@ -28,9 +31,10 @@ func createDir() {
 	}
 }
 
-func createFile(name string, isDir bool, howLongAgo int) MockFileInfo{
+func createFile(name string, isDir bool, howLongAgo int) MockDirEntry{
 	t := time.Now().Add(-time.Hour * time.Duration(howLongAgo))
-	return MockFileInfo{FileName: name, IsDirectory: isDir, LastModTime: t}
+	mfi := MockFileInfo{FileName: name, IsDirectory: isDir, LastModTime: t}
+	return MockDirEntry{FileName: name, IsDirectory: isDir, MockInfo: mfi}
 
 }
 

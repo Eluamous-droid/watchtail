@@ -83,9 +83,9 @@ func tailExistingFiles(path string, maxLength int) (tails chan *os.Process, tail
 	sliceSize := getSmallestInt(len(files), maxLength)
 	filesSlice := files[:sliceSize]
 
-	for _, file := range filesSlice{
-		if !file.IsDir() {
-			queue <- tailFile(path + "/" + file.Name())
+	for i := len(filesSlice)-1; i >= 0; i--{
+		if !filesSlice[i].IsDir() {
+			queue <- tailFile(path + "/" + filesSlice[i].Name())
 			counter++
 		}
 	}
