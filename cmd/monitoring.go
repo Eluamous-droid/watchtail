@@ -9,10 +9,24 @@ import (
 )
 
 func MonitorDir(path string, maxTails int){
+	files, err := os.ReadDir(path)
+	if err != nil{panic(err)}
 
-		queue, counter := tailExistingFiles(path, maxTails)
-		defer killAllTails(queue)
-		monitorDirectory(path, queue, counter, maxTails)
+	queue := make(chan *os.Process, maxTails)
+	counter := 0
+	filesForMonitoring := getNewestFiles(files, maxTails)
+
+	for i := len(filesForMonitoring)-1; i >= 0; i-- {
+		if !filesForMonitoring[i].IsDir() {
+			finfo,err := filesForMonitoring[i].Info()
+			if err != nil {panic(err)}
+			queue <- tailFile(finfo.Name())
+			counter++
+		}
+	}
+
+	defer killAllTails(queue)
+	monitorDirectory(path, queue, counter, maxTails)
 
 }
 
@@ -70,27 +84,14 @@ func newFileCreated(event fsnotify.Event, counter int, maxTails int, tails chan 
 	counter++
 	return counter
 }
-func tailExistingFiles(path string, maxLength int) (tails chan *os.Process, tailCount int){
-	files, err := os.ReadDir(path)
-	queue := make(chan *os.Process, maxLength)
-	counter := 0
-	if err != nil {
-		panic(err)
-	}
+func getNewestFiles(files []os.DirEntry, maxLength int) []os.DirEntry{
 	files = removeDirs(files)
 	files = sortFilesByModTime(files)
 
 	sliceSize := getSmallestInt(len(files), maxLength)
 	filesSlice := files[:sliceSize]
 
-	for i := len(filesSlice)-1; i >= 0; i--{
-		if !filesSlice[i].IsDir() {
-			queue <- tailFile(path + "/" + filesSlice[i].Name())
-			counter++
-		}
-	}
-
-	return queue, counter
+	return filesSlice
 }
 
 func sortFilesByModTime(files []os.DirEntry) []os.DirEntry{
