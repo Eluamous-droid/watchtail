@@ -16,9 +16,9 @@ func MonitorDir(path string, maxTails int){
 	counter := 0
 	filesForMonitoring := getNewestExistingFiles(files, maxTails)
 
-	for i := len(filesForMonitoring)-1; i >= 0; i-- {
-		if !filesForMonitoring[i].IsDir() {
-			finfo,err := filesForMonitoring[i].Info()
+	for _,f := range filesForMonitoring{
+		if !f.IsDir() {
+			finfo,err := f.Info()
 			if err != nil {panic(err)}
 			queue <- tailFile(finfo.Name())
 			counter++
@@ -91,7 +91,7 @@ func getNewestExistingFiles(files []os.DirEntry, maxLength int) []os.DirEntry{
 	files = sortFilesByModTime(files)
 
 	sliceSize := getSmallestInt(len(files), maxLength)
-	filesSlice := files[:sliceSize]
+	filesSlice := files[len(files)-sliceSize:]
 
 	return filesSlice
 }
@@ -106,7 +106,7 @@ func sortFilesByModTime(files []os.DirEntry) []os.DirEntry{
 		if err != nil {
 			panic(err)
 		}
-		return fileI.ModTime().After(fileJ.ModTime())
+		return fileI.ModTime().Before(fileJ.ModTime())
 
 	})
 	return files

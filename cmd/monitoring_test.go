@@ -6,9 +6,8 @@ import (
 	"time"
 )
 
-const dirName ="testDir"
 
-func TestDirEntriesSortedByModDateNewestFirst(t *testing.T){
+func TestDirEntriesSortedByModDateOldestFirst(t *testing.T){
 
 	originalFiles := []os.DirEntry{createFile("test1", false,2), createFile("test2", false,1), createFile("test3", false,5), createFile("test41", false,10)}
 
@@ -17,17 +16,8 @@ func TestDirEntriesSortedByModDateNewestFirst(t *testing.T){
 
 	sortFilesByModTime(newFiles)
 
-	if originalFiles[1].Name() != newFiles[0].Name(){
-		println(originalFiles[1].Name() + " " + newFiles[0].Name())
+	if originalFiles[1].Name() != newFiles[3].Name(){
 		t.Fail()
-	}
-}
-
-
-func createDir() {
-	err := os.Mkdir(dirName,0644)
-	if err != nil {
-		panic(err)
 	}
 }
 
