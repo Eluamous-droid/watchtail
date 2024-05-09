@@ -9,14 +9,28 @@ import (
 )
 
 func MonitorDir(path string, maxTails int){
+	files, err := os.ReadDir(path)
+	if err != nil{panic(err)}
 
-		queue, counter := tailExistingFiles(path, maxTails)
-		defer killAllTails(queue)
-		monitorDirectory(path, queue, counter, maxTails)
+	queue := make(chan *os.Process, maxTails)
+	counter := 0
+	filesForMonitoring := getNewestExistingFiles(files, maxTails)
+
+	for _,f := range filesForMonitoring{
+		if !f.IsDir() {
+			finfo,err := f.Info()
+			if err != nil {panic(err)}
+			queue <- tailFile(finfo.Name())
+			counter++
+		}
+	}
+
+	defer killAllTails(queue)
+	monitorDirectory(path, queue, counter, maxTails)
 
 }
 
-func monitorDirectory(path string, queue chan *os.Process, counter int, maxTails int){
+func monitorDirectory(path string, tails chan *os.Process, counter int, maxTails int){
 
 	watcher, err := fsnotify.NewWatcher()
 	if err != nil {
@@ -43,50 +57,43 @@ func monitorDirectory(path string, queue chan *os.Process, counter int, maxTails
 			}
 
 			if event.Has(fsnotify.Create){
-				f,err := os.Open(event.Name)
-				defer f.Close()
-				if err != nil {
-					panic(err)
-				}
-				fi,_ := f.Stat()
-
-				if fi.IsDir(){
-				continue	
-				}
-				if counter == maxTails{
-					process := <- queue
-					process.Kill()
-					counter--
-				}
-				queue <- tailFile(event.Name)
-				counter++
+				counter = newFileCreated(event, counter, maxTails, tails)
 			}
 		}	
 	}
 }
 
-func tailExistingFiles(path string, maxLength int) (tails chan *os.Process, tailCount int){
-	files, err := os.ReadDir(path)
-	queue := make(chan *os.Process, maxLength)
-	counter := 0
+func newFileCreated(event fsnotify.Event, counter int, maxTails int, tails chan *os.Process) int{
+
+	f,err := os.Open(event.Name)
+	defer f.Close()
 	if err != nil {
-		panic(err)
+		println("Newly created file doesnt exist anymore")
+		return counter
 	}
+	fi,_ := f.Stat()
+
+	if fi.IsDir(){
+		return counter
+	}
+	if counter == maxTails{
+		process := <- tails
+		process.Kill()
+		counter--
+	}
+	tails <- tailFile(event.Name)
+	counter++
+	return counter
+}
+
+func getNewestExistingFiles(files []os.DirEntry, maxLength int) []os.DirEntry{
 	files = removeDirs(files)
 	files = sortFilesByModTime(files)
 
 	sliceSize := getSmallestInt(len(files), maxLength)
-	filesSlice := files[:sliceSize]
+	filesSlice := files[len(files)-sliceSize:]
 
-	for _, file := range filesSlice{
-		if !file.IsDir() {
-			queue <- tailFile(path + "/" + file.Name())
-			counter++
-		}
-
-	}
-	
-	return queue, counter
+	return filesSlice
 }
 
 func sortFilesByModTime(files []os.DirEntry) []os.DirEntry{
@@ -99,7 +106,7 @@ func sortFilesByModTime(files []os.DirEntry) []os.DirEntry{
 		if err != nil {
 			panic(err)
 		}
-		return fileI.ModTime().After(fileJ.ModTime())
+		return fileI.ModTime().Before(fileJ.ModTime())
 
 	})
 	return files
@@ -130,12 +137,10 @@ func removeDirs(s []os.DirEntry) []os.DirEntry{
 			dirless = append(dirless, file)
 		}
 	}
-
 	return dirless
 }
 
 func getSmallestInt(a int, b int) int {
 	if a > b{ return b}
 	return a
-
 }
