@@ -10,7 +10,10 @@ import (
 
 func MonitorDir(path string, maxTails int){
 	files, err := os.ReadDir(path)
-	if err != nil{panic(err)}
+	if err != nil{
+		println("Unable to read directory, exiting.")
+		os.Exit(1)
+	}
 
 	queue := make(chan *os.Process, maxTails)
 	counter := 0
@@ -19,7 +22,11 @@ func MonitorDir(path string, maxTails int){
 	for _,f := range filesForMonitoring{
 		if !f.IsDir() {
 			finfo,err := f.Info()
-			if err != nil {panic(err)}
+			if err != nil {
+				
+				println("Unable to read file %s , skipping", f.Name())
+				continue
+			}
 			queue <- tailFile(finfo.Name())
 			counter++
 		}
@@ -39,7 +46,8 @@ func monitorDirectory(path string, tails chan *os.Process, counter int, maxTails
 	defer watcher.Close()
 	err = watcher.Add(path)
 	if err != nil {
-		panic(err)
+		println("Unable to add watcher")
+		os.Exit(1)
 	}
 	// We should never leave this function unless the program ends
 	for {
@@ -100,11 +108,13 @@ func sortFilesByModTime(files []os.DirEntry) []os.DirEntry{
 	sort.Slice(files, func(i,j int) bool{
 		fileI, err := files[i].Info()
 		if err != nil {
-			panic(err)
+			println("Unable to read file %s , while sorting", fileI.Name())
+			os.Exit(1)
 		}
 		fileJ, err := files[j].Info()
 		if err != nil {
-			panic(err)
+			println("Unable to read file %s , while sorting", fileJ.Name())
+			os.Exit(1)
 		}
 		return fileI.ModTime().Before(fileJ.ModTime())
 
