@@ -1,11 +1,13 @@
 package cmd
 
 import (
+	"log"
 	"os"
 	"os/exec"
 	"sort"
+	"time"
 
-	"github.com/fsnotify/fsnotify"
+	"github.com/radovskyb/watcher"
 )
 
 func MonitorDir(path string, maxTails int){
@@ -39,41 +41,44 @@ func MonitorDir(path string, maxTails int){
 
 func monitorDirectory(path string, tails chan *os.Process, counter int, maxTails int){
 
-	watcher, err := fsnotify.NewWatcher()
-	if err != nil {
-		panic(err)
-	}
-	defer watcher.Close()
-	err = watcher.Add(path)
+	w := watcher.New()
+	w.FilterOps(watcher.Create)
+	defer w.Close()
+	err := w.Add(path)
 	if err != nil {
 		println("Unable to add watcher")
 		os.Exit(1)
 	}
 	// We should never leave this function unless the program ends
-	for {
-		select{
-		case err, ok := <-watcher.Errors:
-			if !ok { // Channel was closed (i.e. Watcher.Close() was called).
-				return
-			}
-			println("ERROR: %s", err)
+	go func(){
+		for {
+			select{
+			case err, ok := <-w.Error:
+				if !ok { // Channel was closed (i.e. Watcher.Close() was called).
+					return
+				}
+				println("ERROR: %s", err)
 
-		case event,ok := <-watcher.Events:
-			if !ok{
-				println("event was not ok") 
-				return
-			}
+			case event,ok := <-w.Event:
+				if !ok{
+					println("event was not ok") 
+					return
+				}
+				counter = newFileCreated(event.Path, counter, maxTails, tails)
+			}	
+		}
+	}()
 
-			if event.Has(fsnotify.Create){
-				counter = newFileCreated(event, counter, maxTails, tails)
-			}
-		}	
+
+	if err := w.Start(time.Millisecond * 100); err != nil {
+		log.Fatalln(err)
 	}
+	
 }
 
-func newFileCreated(event fsnotify.Event, counter int, maxTails int, tails chan *os.Process) int{
+func newFileCreated(path string, counter int, maxTails int, tails chan *os.Process) int{
 
-	f,err := os.Open(event.Name)
+	f,err := os.Open(path)
 	defer f.Close()
 	if err != nil {
 		println("Newly created file doesnt exist anymore")
@@ -89,7 +94,7 @@ func newFileCreated(event fsnotify.Event, counter int, maxTails int, tails chan 
 		process.Kill()
 		counter--
 	}
-	tails <- tailFile(event.Name)
+	tails <- tailFile(path)
 	counter++
 	return counter
 }
