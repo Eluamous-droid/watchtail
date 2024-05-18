@@ -10,9 +10,9 @@ import (
 	"github.com/radovskyb/watcher"
 )
 
-func MonitorDir(path string, maxTails int){
+func MonitorDir(path string, maxTails int) {
 	files, err := os.ReadDir(path)
-	if err != nil{
+	if err != nil {
 		println("Unable to read directory, exiting.")
 		os.Exit(1)
 	}
@@ -21,15 +21,16 @@ func MonitorDir(path string, maxTails int){
 	counter := 0
 	filesForMonitoring := getNewestExistingFiles(files, maxTails)
 
-	for _,f := range filesForMonitoring{
+	for _, f := range filesForMonitoring {
 		if !f.IsDir() {
-			finfo,err := f.Info()
+			finfo, err := f.Info()
 			if err != nil {
-				
+
 				println("Unable to read file %s , skipping", f.Name())
 				continue
 			}
-			queue <- tailFile(finfo.Name())
+
+			queue <- tailFile(path + finfo.Name())
 			counter++
 		}
 	}
@@ -39,7 +40,7 @@ func MonitorDir(path string, maxTails int){
 
 }
 
-func monitorDirectory(path string, tails chan *os.Process, counter int, maxTails int){
+func monitorDirectory(path string, tails chan *os.Process, counter int, maxTails int) {
 
 	w := watcher.New()
 	w.FilterOps(watcher.Create)
@@ -50,48 +51,48 @@ func monitorDirectory(path string, tails chan *os.Process, counter int, maxTails
 		os.Exit(1)
 	}
 	// We should never leave this function unless the program ends
-	go func(){
+	go func() {
 		for {
-			select{
+			select {
 			case err, ok := <-w.Error:
 				if !ok { // Channel was closed (i.e. Watcher.Close() was called).
 					return
 				}
 				println("ERROR: %s", err)
 
-			case event,ok := <-w.Event:
-				if !ok{
-					println("event was not ok") 
+			case event, ok := <-w.Event:
+				if !ok {
+					println("event was not ok")
 					return
 				}
 				counter = newFileCreated(event.Path, counter, maxTails, tails)
-			}	
+			}
 		}
 	}()
-
 
 	if err := w.Start(time.Millisecond * 100); err != nil {
 		log.Fatalln(err)
 	}
-	
+
 }
 
-func newFileCreated(path string, counter int, maxTails int, tails chan *os.Process) int{
+func newFileCreated(path string, counter int, maxTails int, tails chan *os.Process) int {
 
-	f,err := os.Open(path)
+	f, err := os.Open(path)
 	defer f.Close()
 	if err != nil {
 		println("Newly created file doesnt exist anymore")
 		return counter
 	}
-	fi,_ := f.Stat()
+	fi, _ := f.Stat()
 
-	if fi.IsDir(){
+	if fi.IsDir() {
 		return counter
 	}
-	if counter == maxTails{
-		process := <- tails
+	if counter == maxTails {
+		process := <-tails
 		process.Kill()
+		process.Wait()
 		counter--
 	}
 	tails <- tailFile(path)
@@ -99,7 +100,7 @@ func newFileCreated(path string, counter int, maxTails int, tails chan *os.Proce
 	return counter
 }
 
-func getNewestExistingFiles(files []os.DirEntry, maxLength int) []os.DirEntry{
+func getNewestExistingFiles(files []os.DirEntry, maxLength int) []os.DirEntry {
 	files = removeDirs(files)
 	files = sortFilesByModTime(files)
 
@@ -109,8 +110,8 @@ func getNewestExistingFiles(files []os.DirEntry, maxLength int) []os.DirEntry{
 	return filesSlice
 }
 
-func sortFilesByModTime(files []os.DirEntry) []os.DirEntry{
-	sort.Slice(files, func(i,j int) bool{
+func sortFilesByModTime(files []os.DirEntry) []os.DirEntry {
+	sort.Slice(files, func(i, j int) bool {
 		fileI, err := files[i].Info()
 		if err != nil {
 			println("Unable to read file %s , while sorting", fileI.Name())
@@ -130,7 +131,7 @@ func sortFilesByModTime(files []os.DirEntry) []os.DirEntry{
 func tailFile(filePath string) *os.Process {
 
 	app := "tail"
-	args := "-f" 
+	args := "-f"
 
 	cmd := exec.Command(app, args, filePath)
 	cmd.Stdout = os.Stdout
@@ -138,16 +139,18 @@ func tailFile(filePath string) *os.Process {
 	cmd.Start()
 	return cmd.Process
 }
-func killAllTails(queue chan *os.Process){
 
-	for p := range queue{
+func killAllTails(queue chan *os.Process) {
+
+	for p := range queue {
 		p.Kill()
+		p.Wait()
 	}
 }
 
-func removeDirs(s []os.DirEntry) []os.DirEntry{
+func removeDirs(s []os.DirEntry) []os.DirEntry {
 	var dirless []os.DirEntry
-	for _,file := range s{
+	for _, file := range s {
 		if !file.IsDir() {
 			dirless = append(dirless, file)
 		}
@@ -156,6 +159,8 @@ func removeDirs(s []os.DirEntry) []os.DirEntry{
 }
 
 func getSmallestInt(a int, b int) int {
-	if a > b{ return b}
+	if a > b {
+		return b
+	}
 	return a
 }
