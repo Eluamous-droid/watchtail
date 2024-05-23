@@ -1,10 +1,9 @@
-package cmd
+package main
 
 import (
 	"log"
 	"os"
 	"os/exec"
-	"sort"
 	"time"
 
 	"github.com/radovskyb/watcher"
@@ -19,7 +18,7 @@ func MonitorDir(path string, maxTails int) {
 
 	queue := make(chan *os.Process, maxTails)
 	counter := 0
-	filesForMonitoring := getNewestExistingFiles(files, maxTails)
+	filesForMonitoring := getFilesForMonitoring(files, maxTails)
 
 	for _, f := range filesForMonitoring {
 		if !f.IsDir() {
@@ -50,7 +49,6 @@ func monitorDirectory(path string, tails chan *os.Process, counter int, maxTails
 		println("Unable to add watcher")
 		os.Exit(1)
 	}
-	// We should never leave this function unless the program ends
 	go func() {
 		for {
 			select {
@@ -70,6 +68,7 @@ func monitorDirectory(path string, tails chan *os.Process, counter int, maxTails
 		}
 	}()
 
+	// We should never leave this function unless the program ends
 	if err := w.Start(time.Millisecond * 100); err != nil {
 		log.Fatalln(err)
 	}
@@ -81,12 +80,12 @@ func newFileCreated(path string, counter int, maxTails int, tails chan *os.Proce
 	f, err := os.Open(path)
 	defer f.Close()
 	if err != nil {
-		println("Newly created file doesnt exist anymore")
+		println("New file cannot be read: ", path)
 		return counter
 	}
 	fi, _ := f.Stat()
 
-	if fi.IsDir() {
+	if !isEligibleFile(fi) {
 		return counter
 	}
 	if counter == maxTails {
@@ -98,34 +97,6 @@ func newFileCreated(path string, counter int, maxTails int, tails chan *os.Proce
 	tails <- tailFile(path)
 	counter++
 	return counter
-}
-
-func getNewestExistingFiles(files []os.DirEntry, maxLength int) []os.DirEntry {
-	files = removeDirs(files)
-	files = sortFilesByModTime(files)
-
-	sliceSize := getSmallestInt(len(files), maxLength)
-	filesSlice := files[len(files)-sliceSize:]
-
-	return filesSlice
-}
-
-func sortFilesByModTime(files []os.DirEntry) []os.DirEntry {
-	sort.Slice(files, func(i, j int) bool {
-		fileI, err := files[i].Info()
-		if err != nil {
-			println("Unable to read file %s , while sorting", fileI.Name())
-			os.Exit(1)
-		}
-		fileJ, err := files[j].Info()
-		if err != nil {
-			println("Unable to read file %s , while sorting", fileJ.Name())
-			os.Exit(1)
-		}
-		return fileI.ModTime().Before(fileJ.ModTime())
-
-	})
-	return files
 }
 
 func tailFile(filePath string) *os.Process {
@@ -146,21 +117,4 @@ func killAllTails(queue chan *os.Process) {
 		p.Kill()
 		p.Wait()
 	}
-}
-
-func removeDirs(s []os.DirEntry) []os.DirEntry {
-	var dirless []os.DirEntry
-	for _, file := range s {
-		if !file.IsDir() {
-			dirless = append(dirless, file)
-		}
-	}
-	return dirless
-}
-
-func getSmallestInt(a int, b int) int {
-	if a > b {
-		return b
-	}
-	return a
 }
