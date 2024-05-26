@@ -20,7 +20,6 @@ func TestDirEntriesSortedByModDateOldestFirst(t *testing.T) {
 	}
 }
 
-
 func TestIneligbleFilesFiledInExcluded(t *testing.T) {
 	f1 := createFile("ThisIsAtestFile", false, 0)
 	fileNamePatterns := excludes{"test", "notMatchingPattern"}
