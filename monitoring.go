@@ -35,11 +35,11 @@ func MonitorDir(path string, maxTails int) {
 	}
 
 	defer killAllTails(queue)
-	monitorDirectory(path, queue, counter, maxTails)
+	startWatching(path, queue, counter, maxTails)
 
 }
 
-func monitorDirectory(path string, tails chan *os.Process, counter int, maxTails int) {
+func startWatching(path string, tails chan *os.Process, counter int, maxTails int) {
 
 	w := watcher.New()
 	w.FilterOps(watcher.Create)
