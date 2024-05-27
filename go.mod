@@ -1,4 +1,4 @@
-module retailer
+module github.com/eluamous-droid/watchtail
 
 go 1.21.1
 
