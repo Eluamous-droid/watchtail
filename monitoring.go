@@ -16,7 +16,7 @@ func MonitorDir(path string, maxTails int) {
 		os.Exit(1)
 	}
 
-	queue := make(chan *os.Process, maxTails)
+	monitoredFiles := make([]*os.Process, maxTails)
 	counter := 0
 	filesForMonitoring := getFilesForMonitoring(files, maxTails)
 
@@ -29,13 +29,13 @@ func MonitorDir(path string, maxTails int) {
 				continue
 			}
 
-			queue <- tailFile(path + finfo.Name())
+			monitoredFiles = append(monitoredFiles, tailFile(path + finfo.Name()))
 			counter++
 		}
 	}
 
-	defer killAllTails(queue)
-	startWatching(path, queue, counter, maxTails)
+	defer killAllTails(monitoredFiles)
+	startWatching(path, monitoredFiles, counter, maxTails)
 
 }
 
@@ -111,9 +111,9 @@ func tailFile(filePath string) *os.Process {
 	return cmd.Process
 }
 
-func killAllTails(queue chan *os.Process) {
+func killAllTails(moniteredFiles []*os.Process) {
 
-	for p := range queue {
+	for _,p := range moniteredFiles {
 		p.Kill()
 		p.Wait()
 	}
