@@ -39,7 +39,7 @@ func MonitorDir(path string, maxTails int) {
 
 }
 
-func startWatching(path string, tails chan *os.Process, counter int, maxTails int) {
+func startWatching(path string, tails []*os.Process, counter int, maxTails int) {
 
 	w := watcher.New()
 	w.FilterOps(watcher.Create)
@@ -75,7 +75,7 @@ func startWatching(path string, tails chan *os.Process, counter int, maxTails in
 
 }
 
-func newFileCreated(path string, counter int, maxTails int, tails chan *os.Process) int {
+func newFileCreated(path string, counter int, maxTails int, tails []*os.Process) int {
 
 	f, err := os.Open(path)
 	defer f.Close()
@@ -89,13 +89,14 @@ func newFileCreated(path string, counter int, maxTails int, tails chan *os.Proce
 		return counter
 	}
 	if counter == maxTails {
-		process := <-tails
+		process := tails[counter - 1]
 		process.Kill()
 		process.Wait()
 		counter--
 	}
-	tails <- tailFile(path)
+	tails[counter - 1] = tailFile(path)
 	counter++
+	sortFilesByModTime(tails)
 	return counter
 }
 
