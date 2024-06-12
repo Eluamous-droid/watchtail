@@ -9,6 +9,11 @@ import (
 	"github.com/radovskyb/watcher"
 )
 
+type monitoredFile struct {
+	file os.FileInfo
+	tailProcess *os.Process
+}
+
 func MonitorDir(path string, maxTails int) {
 	files, err := os.ReadDir(path)
 	if err != nil {
@@ -16,7 +21,7 @@ func MonitorDir(path string, maxTails int) {
 		os.Exit(1)
 	}
 
-	monitoredFiles := make([]*os.Process, maxTails)
+	monitoredFiles := make([]monitoredFile, maxTails)
 	counter := 0
 	filesForMonitoring := getFilesForMonitoring(files, maxTails)
 
@@ -100,22 +105,25 @@ func newFileCreated(path string, counter int, maxTails int, tails []*os.Process)
 	return counter
 }
 
-func tailFile(filePath string) *os.Process {
+func tailFile(pathToFile string, file os.FileInfo) monitoredFile {
 
 	app := "tail"
 	args := "-f"
 
-	cmd := exec.Command(app, args, filePath)
+	cmd := exec.Command(app, args, pathToFile+file.Name())
 	cmd.Stdout = os.Stdout
 	cmd.Stderr = os.Stderr
 	cmd.Start()
-	return cmd.Process
+
+	mf := monitoredFile{file: file, tailProcess: cmd.Process}
+
+	return mf
 }
 
-func killAllTails(moniteredFiles []*os.Process) {
+func killAllTails(moniteredFiles []monitoredFile) {
 
-	for _,p := range moniteredFiles {
-		p.Kill()
-		p.Wait()
+	for _,mf := range moniteredFiles {
+		mf.tailProcess.Kill()
+		mf.tailProcess.Wait()
 	}
 }
