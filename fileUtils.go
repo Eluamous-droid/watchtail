@@ -16,18 +16,10 @@ func getFilesForMonitoring(files []os.DirEntry, maxLength int) []os.DirEntry {
 	return filesSlice
 }
 
-func sortFilesByModTime(files []os.DirEntry) []os.DirEntry {
+func sortFilesByModTime(files []monitoredFile) []monitoredFile{
 	sort.Slice(files, func(i, j int) bool {
-		fileI, err := files[i].Info()
-		if err != nil {
-			println("Unable to read file %s , while sorting", fileI.Name())
-			os.Exit(1)
-		}
-		fileJ, err := files[j].Info()
-		if err != nil {
-			println("Unable to read file %s , while sorting", fileJ.Name())
-			os.Exit(1)
-		}
+		fileI:= files[i].file
+		fileJ:= files[j].file
 		return fileI.ModTime().Before(fileJ.ModTime())
 
 	})

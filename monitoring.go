@@ -34,7 +34,7 @@ func MonitorDir(path string, maxTails int) {
 				continue
 			}
 
-			monitoredFiles = append(monitoredFiles, tailFile(path + finfo.Name()))
+			monitoredFiles = append(monitoredFiles, tailFile(path + finfo.Name(), finfo))
 			counter++
 		}
 	}
@@ -80,7 +80,7 @@ func startWatching(path string, tails []*os.Process, counter int, maxTails int) 
 
 }
 
-func newFileCreated(path string, counter int, maxTails int, tails []*os.Process) int {
+func newFileCreated(path string, counter int, maxTails int, tails []monitoredFile) int {
 
 	f, err := os.Open(path)
 	defer f.Close()
@@ -88,18 +88,18 @@ func newFileCreated(path string, counter int, maxTails int, tails []*os.Process)
 		println("New file cannot be read: ", path)
 		return counter
 	}
-	fi, _ := f.Stat()
+	finfo, _ := f.Stat()
 
-	if !isEligibleFile(fi) {
+	if !isEligibleFile(finfo) {
 		return counter
 	}
 	if counter == maxTails {
-		process := tails[counter - 1]
-		process.Kill()
-		process.Wait()
+		mf := tails[counter - 1]
+		mf.tailProcess.Kill()
+		mf.tailProcess.Wait()
 		counter--
 	}
-	tails[counter - 1] = tailFile(path)
+	tails[counter - 1] = tailFile(path,finfo)
 	counter++
 	sortFilesByModTime(tails)
 	return counter
