@@ -1,9 +1,11 @@
 package main
 
 import (
+	"fmt"
 	"log"
 	"os"
 	"os/exec"
+	"path/filepath"
 	"time"
 
 	"github.com/radovskyb/watcher"
@@ -34,7 +36,7 @@ func MonitorDir(path string, maxTails int) {
 				continue
 			}
 
-			monitoredFiles = append(monitoredFiles, tailFile(path + finfo.Name(), finfo))
+			monitoredFiles = append(monitoredFiles, tailFile(path, finfo))
 			counter++
 		}
 	}
@@ -44,7 +46,7 @@ func MonitorDir(path string, maxTails int) {
 
 }
 
-func startWatching(path string, tails []*os.Process, counter int, maxTails int) {
+func startWatching(path string, tails []monitoredFile, counter int, maxTails int) {
 
 	w := watcher.New()
 	w.FilterOps(watcher.Create)
@@ -95,13 +97,18 @@ func newFileCreated(path string, counter int, maxTails int, tails []monitoredFil
 	}
 	if counter == maxTails {
 		mf := tails[counter - 1]
+		fmt.Printf("%#v", mf)
+		fmt.Println()
+		fmt.Println(counter)
+		fmt.Printf("%#v", tails)
+		fmt.Println()
 		mf.tailProcess.Kill()
 		mf.tailProcess.Wait()
 		counter--
 	}
 	tails[counter - 1] = tailFile(path,finfo)
 	counter++
-	sortFilesByModTime(tails)
+	sortMonitoredFilesByModTime(tails)
 	return counter
 }
 
@@ -110,7 +117,7 @@ func tailFile(pathToFile string, file os.FileInfo) monitoredFile {
 	app := "tail"
 	args := "-f"
 
-	cmd := exec.Command(app, args, pathToFile+file.Name())
+	cmd := exec.Command(app, args, filepath.Join(pathToFile, file.Name()))
 	cmd.Stdout = os.Stdout
 	cmd.Stderr = os.Stderr
 	cmd.Start()

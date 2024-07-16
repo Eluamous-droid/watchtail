@@ -8,7 +8,7 @@ import (
 
 func getFilesForMonitoring(files []os.DirEntry, maxLength int) []os.DirEntry {
 	files = removeIneligibleFiles(files)
-	files = sortFilesByModTime(files)
+	files = sortDirEntryByModTime(files)
 
 	sliceSize := getSmallestInt(len(files), maxLength)
 	filesSlice := files[len(files)-sliceSize:]
@@ -16,11 +16,29 @@ func getFilesForMonitoring(files []os.DirEntry, maxLength int) []os.DirEntry {
 	return filesSlice
 }
 
-func sortFilesByModTime(files []monitoredFile) []monitoredFile{
+func sortDirEntryByModTime(files []os.DirEntry) []os.DirEntry{
+	sort.Slice(files, func(i, j int) bool {
+		fileI, err := files[i].Info()
+		if err != nil {
+			println("Unable to read file %s , while sorting", fileI.Name())
+			os.Exit(1)
+		}
+		fileJ, err := files[j].Info()
+		if err != nil {
+			println("Unable to read file %s , while sorting", fileJ.Name())
+			os.Exit(1)
+		}		
+		return fileI.ModTime().Before(fileJ.ModTime())
+
+	})
+	return files
+}
+
+func sortMonitoredFilesByModTime(files []monitoredFile) []monitoredFile{
 	sort.Slice(files, func(i, j int) bool {
 		fileI:= files[i].file
 		fileJ:= files[j].file
-		return fileI.ModTime().Before(fileJ.ModTime())
+		return fileI.ModTime().After(fileJ.ModTime())
 
 	})
 	return files

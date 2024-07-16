@@ -13,7 +13,7 @@ func TestDirEntriesSortedByModDateOldestFirst(t *testing.T) {
 	newFiles := make([]os.DirEntry, len(originalFiles))
 	copy(newFiles, originalFiles)
 
-	sortFilesByModTime(newFiles)
+	sortDirEntryByModTime(newFiles)
 
 	if originalFiles[1].Name() != newFiles[3].Name() {
 		t.Fail()
