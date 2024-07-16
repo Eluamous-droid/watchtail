@@ -1,7 +1,6 @@
 package main
 
 import (
-	"fmt"
 	"log"
 	"os"
 	"os/exec"
@@ -27,7 +26,7 @@ func MonitorDir(path string, maxTails int) {
 	counter := 0
 	filesForMonitoring := getFilesForMonitoring(files, maxTails)
 
-	for _, f := range filesForMonitoring {
+	for i, f := range filesForMonitoring {
 		if !f.IsDir() {
 			finfo, err := f.Info()
 			if err != nil {
@@ -36,7 +35,7 @@ func MonitorDir(path string, maxTails int) {
 				continue
 			}
 
-			monitoredFiles = append(monitoredFiles, tailFile(path, finfo))
+			monitoredFiles[i] = tailFile(filepath.Join(path,finfo.Name()), finfo)
 			counter++
 		}
 	}
@@ -88,28 +87,21 @@ func newFileCreated(path string, counter int, maxTails int, tails []monitoredFil
 	defer f.Close()
 	if err != nil {
 		println("New file cannot be read: ", path)
-		return counter
+	return len(tails)
 	}
 	finfo, _ := f.Stat()
 
 	if !isEligibleFile(finfo) {
-		return counter
+	return len(tails)
 	}
-	if counter == maxTails {
+	if len(tails) == maxTails {
 		mf := tails[counter - 1]
-		fmt.Printf("%#v", mf)
-		fmt.Println()
-		fmt.Println(counter)
-		fmt.Printf("%#v", tails)
-		fmt.Println()
 		mf.tailProcess.Kill()
 		mf.tailProcess.Wait()
-		counter--
 	}
 	tails[counter - 1] = tailFile(path,finfo)
-	counter++
 	sortMonitoredFilesByModTime(tails)
-	return counter
+	return len(tails)
 }
 
 func tailFile(pathToFile string, file os.FileInfo) monitoredFile {
@@ -117,7 +109,7 @@ func tailFile(pathToFile string, file os.FileInfo) monitoredFile {
 	app := "tail"
 	args := "-f"
 
-	cmd := exec.Command(app, args, filepath.Join(pathToFile, file.Name()))
+	cmd := exec.Command(app, args, pathToFile)
 	cmd.Stdout = os.Stdout
 	cmd.Stderr = os.Stderr
 	cmd.Start()
