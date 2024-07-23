@@ -1,6 +1,7 @@
 package main
 
 import (
+	"io/fs"
 	"log"
 	"os"
 	"os/exec"
@@ -11,7 +12,7 @@ import (
 )
 
 type monitoredFile struct {
-	file os.FileInfo
+	file os.DirEntry
 	tailProcess *os.Process
 }
 
@@ -34,7 +35,7 @@ func MonitorDir(path string, maxTails int) {
 				continue
 			}
 
-			monitoredFiles[i] = tailFile(filepath.Join(path,finfo.Name()), finfo)
+			monitoredFiles[i] = tailFile(filepath.Join(path,finfo.Name()), f)
 		}
 	}
 
@@ -98,11 +99,11 @@ func newFileCreated(path string, maxTails int, tails []monitoredFile) []monitore
 		mf.tailProcess.Kill()
 		mf.tailProcess.Wait()
 	}
-	tails[len(tails)-1] = tailFile(path,finfo)
+	tails[len(tails)-1] = tailFile(path, fs.FileInfoToDirEntry(finfo))
 	return tails
 }
 
-func tailFile(pathToFile string, file os.FileInfo) monitoredFile {
+func tailFile(pathToFile string, file os.DirEntry) monitoredFile {
 
 	app := "tail"
 	args := "-f"

@@ -36,8 +36,16 @@ func sortDirEntryByModTime(files []os.DirEntry) []os.DirEntry{
 
 func sortMonitoredFilesByModTime(files []monitoredFile) []monitoredFile{
 	sort.Slice(files, func(i, j int) bool {
-		fileI:= files[i].file
-		fileJ:= files[j].file
+		fileI, err := files[i].file.Info()
+		if err != nil {
+			println("Unable to read file %s , while sorting", fileI.Name())
+			os.Exit(1)
+		}
+		fileJ, err := files[j].file.Info()
+		if err != nil {
+			println("Unable to read file %s , while sorting", fileJ.Name())
+			os.Exit(1)
+		}		
 		return fileI.ModTime().After(fileJ.ModTime())
 
 	})
