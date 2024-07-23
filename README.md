@@ -6,3 +6,4 @@ Perfect for the "Cloud native" application youre working with or your logging si
 TODO: 
 
 Include filename patterns
+More tests
