@@ -8,7 +8,7 @@ import (
 
 func getFilesForMonitoring(files []os.DirEntry, maxLength int) []os.DirEntry {
 	files = removeIneligibleFiles(files)
-	files = sortFilesByModTime(files)
+	files = sortDirEntryByModTime(files)
 
 	sliceSize := getSmallestInt(len(files), maxLength)
 	filesSlice := files[len(files)-sliceSize:]
@@ -16,7 +16,7 @@ func getFilesForMonitoring(files []os.DirEntry, maxLength int) []os.DirEntry {
 	return filesSlice
 }
 
-func sortFilesByModTime(files []os.DirEntry) []os.DirEntry {
+func sortDirEntryByModTime(files []os.DirEntry) []os.DirEntry {
 	sort.Slice(files, func(i, j int) bool {
 		fileI, err := files[i].Info()
 		if err != nil {
@@ -29,6 +29,24 @@ func sortFilesByModTime(files []os.DirEntry) []os.DirEntry {
 			os.Exit(1)
 		}
 		return fileI.ModTime().Before(fileJ.ModTime())
+
+	})
+	return files
+}
+
+func sortMonitoredFilesByModTime(files []monitoredFile) []monitoredFile {
+	sort.Slice(files, func(i, j int) bool {
+		fileI, err := files[i].file.Info()
+		if err != nil {
+			println("Unable to read file %s , while sorting", fileI.Name())
+			os.Exit(1)
+		}
+		fileJ, err := files[j].file.Info()
+		if err != nil {
+			println("Unable to read file %s , while sorting", fileJ.Name())
+			os.Exit(1)
+		}
+		return fileI.ModTime().After(fileJ.ModTime())
 
 	})
 	return files
@@ -56,6 +74,7 @@ func isEligibleFile(fi os.FileInfo) bool {
 	fn := fi.Name()
 	for _, s := range excludedFiles {
 		if strings.Contains(fn, s) {
+			println("Name is in excludes")
 			return false
 		}
 	}

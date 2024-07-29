@@ -1,13 +1,20 @@
 package main
 
 import (
+	"io/fs"
 	"log"
 	"os"
 	"os/exec"
+	"path/filepath"
 	"time"
 
 	"github.com/radovskyb/watcher"
 )
+
+type monitoredFile struct {
+	file        os.DirEntry
+	tailProcess *os.Process
+}
 
 func MonitorDir(path string, maxTails int) {
 	files, err := os.ReadDir(path)
@@ -16,8 +23,7 @@ func MonitorDir(path string, maxTails int) {
 		os.Exit(1)
 	}
 
-	queue := make(chan *os.Process, maxTails)
-	counter := 0
+	monitoredFiles := make([]monitoredFile, 0, maxTails)
 	filesForMonitoring := getFilesForMonitoring(files, maxTails)
 
 	for _, f := range filesForMonitoring {
@@ -29,17 +35,16 @@ func MonitorDir(path string, maxTails int) {
 				continue
 			}
 
-			queue <- tailFile(path + finfo.Name())
-			counter++
+			monitoredFiles = append(monitoredFiles, tailFile(filepath.Join(path, finfo.Name()), f))
 		}
 	}
 
-	defer killAllTails(queue)
-	startWatching(path, queue, counter, maxTails)
+	defer killAllTails(monitoredFiles)
+	startWatching(path, monitoredFiles, maxTails)
 
 }
 
-func startWatching(path string, tails chan *os.Process, counter int, maxTails int) {
+func startWatching(path string, tails []monitoredFile, maxTails int) {
 
 	w := watcher.New()
 	w.FilterOps(watcher.Create)
@@ -63,7 +68,7 @@ func startWatching(path string, tails chan *os.Process, counter int, maxTails in
 					println("event was not ok")
 					return
 				}
-				counter = newFileCreated(event.Path, counter, maxTails, tails)
+				tails = newFileCreated(event.Path, maxTails, tails)
 			}
 		}
 	}()
@@ -75,46 +80,52 @@ func startWatching(path string, tails chan *os.Process, counter int, maxTails in
 
 }
 
-func newFileCreated(path string, counter int, maxTails int, tails chan *os.Process) int {
+func newFileCreated(path string, maxTails int, tails []monitoredFile) []monitoredFile {
 
 	f, err := os.Open(path)
 	defer f.Close()
 	if err != nil {
 		println("New file cannot be read: ", path)
-		return counter
+		return tails
 	}
-	fi, _ := f.Stat()
+	finfo, _ := f.Stat()
 
-	if !isEligibleFile(fi) {
-		return counter
+	if !isEligibleFile(finfo) {
+		println("New file is ineligible for monitoring, filename: " + finfo.Name())
+		return tails
 	}
-	if counter == maxTails {
-		process := <-tails
-		process.Kill()
-		process.Wait()
-		counter--
+
+	if len(tails) == maxTails {
+		tails = sortMonitoredFilesByModTime(tails)
+		mf := tails[len(tails)-1]
+		mf.tailProcess.Kill()
+		mf.tailProcess.Wait()
+		tails[len(tails)-1] = tailFile(path, fs.FileInfoToDirEntry(finfo))
+	} else {
+		tails = append(tails, tailFile(path, fs.FileInfoToDirEntry(finfo)))
 	}
-	tails <- tailFile(path)
-	counter++
-	return counter
+	return tails
 }
 
-func tailFile(filePath string) *os.Process {
+func tailFile(pathToFile string, file os.DirEntry) monitoredFile {
 
 	app := "tail"
 	args := "-f"
 
-	cmd := exec.Command(app, args, filePath)
+	cmd := exec.Command(app, args, pathToFile)
 	cmd.Stdout = os.Stdout
 	cmd.Stderr = os.Stderr
 	cmd.Start()
-	return cmd.Process
+
+	mf := monitoredFile{file: file, tailProcess: cmd.Process}
+
+	return mf
 }
 
-func killAllTails(queue chan *os.Process) {
+func killAllTails(moniteredFiles []monitoredFile) {
 
-	for p := range queue {
-		p.Kill()
-		p.Wait()
+	for _, mf := range moniteredFiles {
+		mf.tailProcess.Kill()
+		mf.tailProcess.Wait()
 	}
 }

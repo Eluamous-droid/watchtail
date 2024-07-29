@@ -7,13 +7,14 @@ import (
 )
 
 func TestDirEntriesSortedByModDateOldestFirst(t *testing.T) {
+	defer teardown()
 
-	originalFiles := []os.DirEntry{createFile("test1", false, 2), createFile("test2", false, 1), createFile("test3", false, 5), createFile("test41", false, 10)}
+	originalFiles := []os.DirEntry{createFileMock("test1", false, 2), createFileMock("test2", false, 1), createFileMock("test3", false, 5), createFileMock("test41", false, 10)}
 
 	newFiles := make([]os.DirEntry, len(originalFiles))
 	copy(newFiles, originalFiles)
 
-	sortFilesByModTime(newFiles)
+	sortDirEntryByModTime(newFiles)
 
 	if originalFiles[1].Name() != newFiles[3].Name() {
 		t.Fail()
@@ -21,7 +22,8 @@ func TestDirEntriesSortedByModDateOldestFirst(t *testing.T) {
 }
 
 func TestIneligbleFilesFiledInExcluded(t *testing.T) {
-	f1 := createFile("ThisIsAtestFile", false, 0)
+	defer teardown()
+	f1 := createFileMock("ThisIsAtestFile", false, 0)
 	fileNamePatterns := excludes{"test", "notMatchingPattern"}
 	excludedFiles = fileNamePatterns
 
@@ -30,7 +32,8 @@ func TestIneligbleFilesFiledInExcluded(t *testing.T) {
 	}
 }
 func TestIneligbleFilesIsDir(t *testing.T) {
-	f1 := createFile("ThisIsAtestFile", true, 0)
+	defer teardown()
+	f1 := createFileMock("ThisIsAtestFile", true, 0)
 	fileNamePatterns := excludes{"NotExcluded", "notMatchingPattern"}
 	excludedFiles = fileNamePatterns
 
@@ -40,8 +43,9 @@ func TestIneligbleFilesIsDir(t *testing.T) {
 }
 
 func TestIneligbleFilesFiledNotInExcluded(t *testing.T) {
-	f1 := createFile("ThisIsAtestFile", false, 0)
-	f2 := createFile("Sure", false, 0)
+	defer teardown()
+	f1 := createFileMock("ThisIsAtestFile", false, 0)
+	f2 := createFileMock("Sure", false, 0)
 	fileNamePatterns := excludes{"NotExcluded", "ForSure"}
 	excludedFiles = fileNamePatterns
 
@@ -53,8 +57,9 @@ func TestIneligbleFilesFiledNotInExcluded(t *testing.T) {
 	}
 }
 func TestRemovesIneligibleFiles(t *testing.T) {
-	f1 := createFile("ThisIsAtestFile", false, 0)
-	f2 := createFile("Sure", false, 0)
+	defer teardown()
+	f1 := createFileMock("ThisIsAtestFile", false, 0)
+	f2 := createFileMock("Sure", false, 0)
 	fileNamePatterns := excludes{"test", "ForSure"}
 	excludedFiles = fileNamePatterns
 
@@ -69,9 +74,12 @@ func TestRemovesIneligibleFiles(t *testing.T) {
 	}
 }
 
-func createFile(name string, isDir bool, howLongAgo int) MockDirEntry {
+func teardown() {
+	excludedFiles = excludes{}
+}
+
+func createFileMock(name string, isDir bool, howLongAgo int) MockDirEntry {
 	t := time.Now().Add(-time.Hour * time.Duration(howLongAgo))
 	mfi := MockFileInfo{FileName: name, IsDirectory: isDir, LastModTime: t}
 	return MockDirEntry{FileName: name, IsDirectory: isDir, MockInfo: mfi}
-
 }
