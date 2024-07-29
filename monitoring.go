@@ -12,7 +12,7 @@ import (
 )
 
 type monitoredFile struct {
-	file os.DirEntry
+	file        os.DirEntry
 	tailProcess *os.Process
 }
 
@@ -35,7 +35,7 @@ func MonitorDir(path string, maxTails int) {
 				continue
 			}
 
-			monitoredFiles = append(monitoredFiles, tailFile(filepath.Join(path,finfo.Name()), f))
+			monitoredFiles = append(monitoredFiles, tailFile(filepath.Join(path, finfo.Name()), f))
 		}
 	}
 
@@ -86,21 +86,22 @@ func newFileCreated(path string, maxTails int, tails []monitoredFile) []monitore
 	defer f.Close()
 	if err != nil {
 		println("New file cannot be read: ", path)
-	return tails
+		return tails
 	}
 	finfo, _ := f.Stat()
 
 	if !isEligibleFile(finfo) {
-	return tails
+		println("New file is ineligible for monitoring, filename: " + finfo.Name())
+		return tails
 	}
-	
+
 	if len(tails) == maxTails {
 		tails = sortMonitoredFilesByModTime(tails)
-		mf := tails[len(tails) - 1]
+		mf := tails[len(tails)-1]
 		mf.tailProcess.Kill()
 		mf.tailProcess.Wait()
 		tails[len(tails)-1] = tailFile(path, fs.FileInfoToDirEntry(finfo))
-	}else{	
+	} else {
 		tails = append(tails, tailFile(path, fs.FileInfoToDirEntry(finfo)))
 	}
 	return tails
@@ -123,7 +124,7 @@ func tailFile(pathToFile string, file os.DirEntry) monitoredFile {
 
 func killAllTails(moniteredFiles []monitoredFile) {
 
-	for _,mf := range moniteredFiles {
+	for _, mf := range moniteredFiles {
 		mf.tailProcess.Kill()
 		mf.tailProcess.Wait()
 	}
