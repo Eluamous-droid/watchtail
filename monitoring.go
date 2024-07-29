@@ -23,10 +23,10 @@ func MonitorDir(path string, maxTails int) {
 		os.Exit(1)
 	}
 
-	monitoredFiles := make([]monitoredFile, maxTails)
+	monitoredFiles := make([]monitoredFile, 0, maxTails)
 	filesForMonitoring := getFilesForMonitoring(files, maxTails)
 
-	for i, f := range filesForMonitoring {
+	for _, f := range filesForMonitoring {
 		if !f.IsDir() {
 			finfo, err := f.Info()
 			if err != nil {
@@ -35,7 +35,7 @@ func MonitorDir(path string, maxTails int) {
 				continue
 			}
 
-			monitoredFiles[i] = tailFile(filepath.Join(path,finfo.Name()), f)
+			monitoredFiles = append(monitoredFiles, tailFile(filepath.Join(path,finfo.Name()), f))
 		}
 	}
 
@@ -93,13 +93,16 @@ func newFileCreated(path string, maxTails int, tails []monitoredFile) []monitore
 	if !isEligibleFile(finfo) {
 	return tails
 	}
-	tails = sortMonitoredFilesByModTime(tails)
+	
 	if len(tails) == maxTails {
+		tails = sortMonitoredFilesByModTime(tails)
 		mf := tails[len(tails) - 1]
 		mf.tailProcess.Kill()
 		mf.tailProcess.Wait()
+		tails[len(tails)-1] = tailFile(path, fs.FileInfoToDirEntry(finfo))
+	}else{	
+		tails = append(tails, tailFile(path, fs.FileInfoToDirEntry(finfo)))
 	}
-	tails[len(tails)-1] = tailFile(path, fs.FileInfoToDirEntry(finfo))
 	return tails
 }
 
