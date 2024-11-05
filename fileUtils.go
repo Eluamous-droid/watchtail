@@ -21,12 +21,12 @@ func sortDirEntryByModTime(files []os.DirEntry) []os.DirEntry {
 		fileI, err := files[i].Info()
 		if err != nil {
 			println("Unable to read file %s , while sorting", fileI.Name())
-			os.Exit(1)
+			return true
 		}
 		fileJ, err := files[j].Info()
 		if err != nil {
 			println("Unable to read file %s , while sorting", fileJ.Name())
-			os.Exit(1)
+			return true
 		}
 		return fileI.ModTime().Before(fileJ.ModTime())
 
@@ -34,17 +34,33 @@ func sortDirEntryByModTime(files []os.DirEntry) []os.DirEntry {
 	return files
 }
 
+func removeDeletedFileFromMonitoredFileSlice(files []monitoredFile, deletedFile string) []monitoredFile {
+	newFiles := make([]monitoredFile, 0, 0)
+	for _, mf := range files {
+		if fi, err := mf.file.Info(); err != nil {
+			untailFile(mf)
+		} else {
+			if fi.Name() == deletedFile {
+				untailFile(mf)
+			} else {
+				newFiles = append(newFiles, mf)
+			}
+		}
+	}
+	return newFiles
+}
+
 func sortMonitoredFilesByModTime(files []monitoredFile) []monitoredFile {
 	sort.Slice(files, func(i, j int) bool {
 		fileI, err := files[i].file.Info()
 		if err != nil {
 			println("Unable to read file %s , while sorting", fileI.Name())
-			os.Exit(1)
+			return true
 		}
 		fileJ, err := files[j].file.Info()
 		if err != nil {
 			println("Unable to read file %s , while sorting", fileJ.Name())
-			os.Exit(1)
+			return true
 		}
 		return fileI.ModTime().After(fileJ.ModTime())
 
@@ -80,6 +96,11 @@ func isEligibleFile(fi os.FileInfo) bool {
 	}
 
 	return true
+}
+
+func untailFile(mf monitoredFile) {
+	mf.tailProcess.Kill()
+	mf.tailProcess.Wait()
 }
 
 func getSmallestInt(a int, b int) int {

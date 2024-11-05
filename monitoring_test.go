@@ -58,7 +58,7 @@ func TestNewFileCreatedFullSliceDoesntRemoveFirstAddedFile(t *testing.T) {
 	file2 := createFile(filepath.Join(testFilesDir, "test2"))
 	file3 := createFile(filepath.Join(testFilesDir, "test3"))
 
-	mfs := make([]monitoredFile, 0, maxTails)
+	mfs := make([]monitoredFile, 0, 0)
 	mfs = newFileCreated(file1, maxTails, mfs)
 	mfs = newFileCreated(file2, maxTails, mfs)
 
@@ -81,15 +81,14 @@ func TestNewFileCreatedFullSliceDoesntRemoveFirstAddedFile(t *testing.T) {
 	}
 
 	for _, mf := range mfs {
-		if mf.file.Name() == file2 {
-			println(file2 + "Should have been removed")
+		if mf.file.Name() == "test2" {
+			println(file2 + " should have been removed")
 			t.Fail()
 		}
 
 	}
 
 	killAllTails(mfs)
-	os.RemoveAll(testFilesDir)
 }
 func createFile(name string) string {
 	fileInput := []byte("File name is: " + name)
