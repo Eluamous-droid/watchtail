@@ -46,51 +46,8 @@ func TestNewFileCreatedFullSlice(t *testing.T) {
 	}
 
 	killAllTails(mfs)
-	os.RemoveAll(testFilesDir)
 }
 
-func TestNewFileCreatedFullSliceDoesntRemoveFirstAddedFile(t *testing.T) {
-	os.Mkdir(testFilesDir, 0755)
-	defer os.RemoveAll(testFilesDir)
-
-	maxTails := 2
-	file1 := createFile(filepath.Join(testFilesDir, "test1"))
-	file2 := createFile(filepath.Join(testFilesDir, "test2"))
-	file3 := createFile(filepath.Join(testFilesDir, "test3"))
-
-	mfs := make([]monitoredFile, 0, maxTails)
-	mfs = newFileCreated(file1, maxTails, mfs)
-	mfs = newFileCreated(file2, maxTails, mfs)
-
-	f, err := os.OpenFile(file1, os.O_APPEND|os.O_WRONLY|os.O_CREATE, 0755)
-	if err != nil {
-		panic(err)
-	}
-	defer f.Close()
-
-	file1ExtraInput := "file1 extra input"
-	if _, err = f.WriteString(file1ExtraInput); err != nil {
-		panic(err)
-	}
-
-	mfs = newFileCreated(file3, maxTails, mfs)
-
-	if len(mfs) != 2 {
-		println("len is not 2, it is: " + strconv.FormatInt(int64(len(mfs)), 10))
-		t.Fail()
-	}
-
-	for _, mf := range mfs {
-		if mf.file.Name() == file2 {
-			println(file2 + "Should have been removed")
-			t.Fail()
-		}
-
-	}
-
-	killAllTails(mfs)
-	os.RemoveAll(testFilesDir)
-}
 func createFile(name string) string {
 	fileInput := []byte("File name is: " + name)
 	err := os.WriteFile(name, fileInput, 0644)

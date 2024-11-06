@@ -47,7 +47,7 @@ func MonitorDir(path string, maxTails int) {
 func startWatching(path string, tails []monitoredFile, maxTails int) {
 
 	w := watcher.New()
-	w.FilterOps(watcher.Create)
+	w.FilterOps(watcher.Create, watcher.Remove)
 	defer w.Close()
 	err := w.Add(path)
 	if err != nil {
@@ -68,7 +68,12 @@ func startWatching(path string, tails []monitoredFile, maxTails int) {
 					println("event was not ok")
 					return
 				}
-				tails = newFileCreated(event.Path, maxTails, tails)
+				if event.Op == watcher.Create {
+					tails = newFileCreated(event.Path, maxTails, tails)
+				}
+				if event.Op == watcher.Remove {
+					tails = removeDeletedFileFromMonitoredFileSlice(tails, event.Name())
+				}
 			}
 		}
 	}()
