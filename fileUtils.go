@@ -37,14 +37,11 @@ func sortDirEntryByModTime(files []os.DirEntry) []os.DirEntry {
 func removeDeletedFileFromMonitoredFileSlice(files []monitoredFile, deletedFile string) []monitoredFile {
 	newFiles := make([]monitoredFile, 0, 0)
 	for _, mf := range files {
-		if fi, err := mf.file.Info(); err != nil {
+		if fi, err := mf.file.Info(); err != nil || fi.Name() == deletedFile{
 			untailFile(mf)
 		} else {
-			if fi.Name() == deletedFile {
-				untailFile(mf)
-			} else {
 				newFiles = append(newFiles, mf)
-			}
+			
 		}
 	}
 	return newFiles
@@ -55,12 +52,12 @@ func sortMonitoredFilesByModTime(files []monitoredFile) []monitoredFile {
 		fileI, err := files[i].file.Info()
 		if err != nil {
 			println("Unable to read file %s , while sorting", fileI.Name())
-			return true
+			return false
 		}
 		fileJ, err := files[j].file.Info()
 		if err != nil {
 			println("Unable to read file %s , while sorting", fileJ.Name())
-			return true
+			return false
 		}
 		return fileI.ModTime().After(fileJ.ModTime())
 
@@ -90,7 +87,7 @@ func isEligibleFile(fi os.FileInfo) bool {
 	fn := fi.Name()
 	for _, s := range excludedFiles {
 		if strings.Contains(fn, s) {
-			println("Name is in excludes")
+			println("Filename: " + fn + " is in excludes")
 			return false
 		}
 	}

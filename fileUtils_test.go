@@ -23,6 +23,21 @@ func TestDirEntriesSortedByModDateOldestFirst(t *testing.T) {
 	}
 }
 
+func TestSortMonitoredFilesByModTimeNewestFirst(t *testing.T) {
+	defer teardown()
+
+	originalFiles := []monitoredFile{createMonitoredFileMock("test1", false, 3), createMonitoredFileMock("test2", false, 5), createMonitoredFileMock("test3", false, 1), createMonitoredFileMock("test41", false, 10)}
+
+	newFiles := make([]monitoredFile, len(originalFiles))
+	copy(newFiles, originalFiles)
+
+	sortMonitoredFilesByModTime(newFiles)
+
+	if originalFiles[0].file.Name() != newFiles[1].file.Name() {
+		t.Fail()
+	}
+}
+
 func TestIneligbleFilesFiledInExcluded(t *testing.T) {
 	defer teardown()
 	f1 := createFileMock("ThisIsAtestFile", false, 0)
@@ -125,4 +140,11 @@ func createFileMock(name string, isDir bool, howLongAgo int) MockDirEntry {
 	t := time.Now().Add(-time.Hour * time.Duration(howLongAgo))
 	mfi := MockFileInfo{FileName: name, IsDirectory: isDir, LastModTime: t}
 	return MockDirEntry{FileName: name, IsDirectory: isDir, MockInfo: mfi}
+}
+
+func createMonitoredFileMock(name string, isDir bool, howLongAgo int) monitoredFile{
+	t := time.Now().Add(-time.Hour * time.Duration(howLongAgo))
+	mfi := MockFileInfo{FileName: name, IsDirectory: isDir, LastModTime: t}
+	mde :=  MockDirEntry{FileName: name, IsDirectory: isDir, MockInfo: mfi}
+	return monitoredFile{file: mde, tailProcess: nil}
 }
