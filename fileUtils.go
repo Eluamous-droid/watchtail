@@ -1,6 +1,7 @@
 package main
 
 import (
+	"fmt"
 	"os"
 	"sort"
 	"strings"
@@ -20,12 +21,12 @@ func sortDirEntryByModTime(files []os.DirEntry) []os.DirEntry {
 	sort.Slice(files, func(i, j int) bool {
 		fileI, err := files[i].Info()
 		if err != nil {
-			println("Unable to read file %s , while sorting", fileI.Name())
+			fmt.Printf("Unable able to read file %s , while sorting\n", files[i].Name())
 			return true
 		}
 		fileJ, err := files[j].Info()
 		if err != nil {
-			println("Unable to read file %s , while sorting", fileJ.Name())
+			fmt.Printf("Unable able to read file %s , while sorting\n", files[j].Name())
 			return true
 		}
 		return fileI.ModTime().Before(fileJ.ModTime())
@@ -51,12 +52,12 @@ func sortMonitoredFilesByModTime(files []monitoredFile) []monitoredFile {
 	sort.Slice(files, func(i, j int) bool {
 		fileI, err := files[i].file.Info()
 		if err != nil {
-			println("Unable to read file %s , while sorting", fileI.Name())
+			fmt.Printf("Unable able to read file %s , while sorting\n", files[i].file.Name())
 			return false
 		}
 		fileJ, err := files[j].file.Info()
 		if err != nil {
-			println("Unable to read file %s , while sorting", fileJ.Name())
+			fmt.Printf("Unable able to read file %s , while sorting\n", files[j].file.Name())
 			return false
 		}
 		return fileI.ModTime().After(fileJ.ModTime())
