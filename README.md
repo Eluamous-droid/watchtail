@@ -8,3 +8,5 @@ TODO:
 Include filename patterns
 
 More tests
+
+--version
