@@ -7,6 +7,8 @@ TODO:
 
 Include filename patterns
 
+Never kill option
+
 More tests
 
 --version
