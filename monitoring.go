@@ -69,6 +69,7 @@ func startWatching(path string, tails []monitoredFile, maxTails int) {
 					return
 				}
 				if event.Op == watcher.Create {
+					println("New File created " + event.Path)
 					tails = newFileCreated(event.Path, maxTails, tails)
 				}
 				if event.Op == watcher.Remove {
