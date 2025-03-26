@@ -69,7 +69,6 @@ func startWatching(path string, tails []monitoredFile, maxTails int) {
 					return
 				}
 				if event.Op == watcher.Create {
-					println("New File created " + event.Path)
 					tails = newFileCreated(event.Path, maxTails, tails)
 				}
 				if event.Op == watcher.Remove {
@@ -80,7 +79,7 @@ func startWatching(path string, tails []monitoredFile, maxTails int) {
 	}()
 
 	// We should never leave this function unless the program ends
-	if err := w.Start(time.Millisecond * 100); err != nil {
+	if err := w.Start(time.Millisecond ); err != nil {
 		log.Fatalln(err)
 	}
 
