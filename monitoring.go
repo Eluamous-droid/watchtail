@@ -79,7 +79,7 @@ func startWatching(path string, tails []monitoredFile, maxTails int) {
 	}()
 
 	// We should never leave this function unless the program ends
-	if err := w.Start(time.Millisecond ); err != nil {
+	if err := w.Start(time.Microsecond); err != nil {
 		log.Fatalln(err)
 	}
 
